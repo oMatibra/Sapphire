@@ -1,33 +1,259 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Cargo {
+  ADMIN
+  GERENTE
+  TECNICO
+  USUARIO
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum StatusChamado {
+  ABERTO
+  EM_ANDAMENTO
+  AGUARDANDO
+  RESOLVIDO
+  FECHADO
+}
+
+enum StatusAtividade {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum StatusSuporte {
+  ABERTO
+  EM_ANALISE
+  RESOLVIDO
+  FECHADO
+}
+
+model Empresa {
+  id            Int       @id @default(autoincrement())
+
+  nome          String
+  cnpj          String    @unique
+  email         String?
+  telefone      String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  usuarios      Usuario[]
+}
+
+model tipoUsuario {
+  id            Int       @id @default(autoincrement())
+
+  titulo        String
+  descricao     String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  usuarios      Usuario[]
 }
 
 model Usuario {
-    id         Int      @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
 
-    nome       String
-    email      String  @unique
-    senhaHash  String
-    telefone   String  
-    cpf        String  @unique
+  nome          String
+  email         String    @unique
+  senhaHash     String
 
-    cargo      String
+  telefone      String
+  cpf           String    @unique
 
-    empresaId  Int
-    empresa    Empresa @relation(fields: [empresaId], references: [id])
+  imagem        String?
 
-    fotoPerfil String?
-    
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+  cargo         Cargo
+
+  ultimoLogin   DateTime?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  empresaId     Int
+  empresa       Empresa @relation(fields: [empresaId], references: [id])
+
+  tipoUsuarioId Int
+  tipoUsuario   tipoUsuario @relation(fields: [tipoUsuarioId], references: [id])
+
+  atividades    Atividade[]
+  chamados      Chamado[]
+  comentarios   Comentario[]
+  suportes      Suporte[]
+  membros       Membro[]
+}
+
+model Equipe {
+  id            Int       @id @default(autoincrement())
+
+  numero        String    @unique
+  descricao     String
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  membros       Membro[]
+  chamados      Chamado[]
+}
+
+model Membro {
+  id            Int       @id @default(autoincrement())
+
+  usuarioId     Int
+  usuario       Usuario @relation(fields: [usuarioId], references: [id])
+
+  equipeId      Int
+  equipe        Equipe @relation(fields: [equipeId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([usuarioId, equipeId])
+}
+
+model Atividade {
+  id                  Int               @id @default(autoincrement())
+
+  numero              String            @unique
+  titulo              String
+  resumo              String
+  descricao           String
+
+  status              StatusAtividade   @default(PENDENTE)
+  prioridade          Prioridade        @default(MEDIA)
+
+  dataAbertura        DateTime          @default(now())
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  usuarioId           Int
+  usuario             Usuario @relation(fields: [usuarioId], references: [id])
+
+  chamados            Chamado[]
+}
+
+model Chamado {
+  id                  Int              @id @default(autoincrement())
+
+  numero              String           @unique
+  titulo              String
+  resumo              String
+  descricao           String
+
+  status              StatusChamado    @default(ABERTO)
+  prioridade          Prioridade       @default(MEDIA)
+
+  dataAbertura        DateTime         @default(now())
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  atividadeId         Int
+  atividade           Atividade @relation(fields: [atividadeId], references: [id])
+
+  usuarioId           Int
+  usuario             Usuario @relation(fields: [usuarioId], references: [id])
+
+  equipeId            Int?
+  equipe              Equipe? @relation(fields: [equipeId], references: [id])
+
+  tipoValidacaoId     Int
+  tipoValidacao       tipoValidacao @relation(fields: [tipoValidacaoId], references: [id])
+
+  comentarios         Comentario[]
+}
+
+model Comentario {
+  id              Int      @id @default(autoincrement())
+
+  descricao       String
+  anexoImagem     String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  usuarioId       Int
+  usuario         Usuario @relation(fields: [usuarioId], references: [id])
+
+  chamadoId       Int
+  chamado         Chamado @relation(fields: [chamadoId], references: [id])
+
+  @@index([usuarioId])
+  @@index([chamadoId])
+}
+
+model tipoSuporte {
+  id              Int      @id @default(autoincrement())
+
+  titulo          String
+  descricao       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  suportes        Suporte[]
+}
+
+model tipoValidacao {
+  id              Int      @id @default(autoincrement())
+
+  titulo          String
+  descricao       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  chamados        Chamado[]
+  suportes        Suporte[]
+}
+
+model Suporte {
+  id                  Int             @id @default(autoincrement())
+
+  numero              String          @unique
+  titulo              String
+  resumo              String
+  descricao           String
+
+  anexoImagem         String?
+
+  status              StatusSuporte   @default(ABERTO)
+  prioridade          Prioridade      @default(MEDIA)
+
+  dataAbertura        DateTime        @default(now())
+
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  tipoSuporteId       Int
+  tipoSuporte         tipoSuporte @relation(fields: [tipoSuporteId], references: [id])
+
+  tipoValidacaoId     Int
+  tipoValidacao       tipoValidacao @relation(fields: [tipoValidacaoId], references: [id])
+
+  usuarioId           Int
+  usuario             Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@index([tipoSuporteId])
+  @@index([tipoValidacaoId])
 }
